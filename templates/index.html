@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Car Cluster Predictor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-logo">
+        <span class="logo-icon">🚘</span>
+        <div>
+          <h1>Car Cluster Predictor</h1>
+          <p>EV &amp; Car K-Means Clustering Model</p>
+        </div>
+      </div>
+      <div class="header-badge">K-Means · 5 Clusters</div>
+    </div>
+  </header>
+
+  <main>
+
+  <!-- ===== CLUSTER REFERENCE ===== -->
+  <section class="clusters-overview">
+    <div class="clusters-header">
+      <h2>5 กลุ่มรถยนต์</h2>
+    </div>
+    <div class="clusters-grid">
+      {% for cid, info in clusters.items() %}
+      <div class="cluster-ref-card" data-cluster="{{ cid }}">
+        <div class="ref-icon">{{ info.icon }}</div>
+        <div class="ref-cluster-num">Cluster {{ cid }}</div>
+        <div class="ref-name">{{ info.name }}</div>
+        <div class="ref-name-en">{{ info.name_en }}</div>
+        <div class="ref-stats">
+          <span>{{ info.stats.avg_hp }}</span>
+          <span>{{ info.stats.avg_price }}</span>
+          <span>{{ info.stats.count }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="main-layout">
+
+    <section class="card form-card">
+      <div class="card-header">
+        <span class="section-label">INPUT</span>
+        <h2>ข้อมูลรถยนต์</h2>
+        <p>กรอกสเปคของรถที่ต้องการจำแนก</p>
+      </div>
+
+      <form id="predict-form" novalidate>
+
+        <div class="field-group">
+          <div class="field">
+            <label for="battery_capacity">
+              Battery Capacity
+              <span class="unit">Wh</span>
+              <span class="required-mark">*</span>
+            </label>
+            <input type="number" id="battery_capacity" name="battery_capacity"
+              placeholder="เช่น 3500" min="0" required />
+            <span class="field-error" id="err-battery_capacity"></span>
+            <span class="hint">ความจุแบตเตอรี่ หน่วย Wh</span>
+          </div>
+
+          <div class="field">
+            <label for="horsepower">
+              Horsepower
+              <span class="unit">HP</span>
+              <span class="required-mark">*</span>
+            </label>
+            <input type="number" id="horsepower" name="horsepower"
+              placeholder="เช่น 536" min="0" required />
+            <span class="field-error" id="err-horsepower"></span>
+            <span class="hint">กำลังสูงสุดของมอเตอร์</span>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field">
+            <label for="total_speed">
+              Top Speed
+              <span class="unit">km/h</span>
+              <span class="required-mark">*</span>
+            </label>
+            <input type="number" id="total_speed" name="total_speed"
+              placeholder="เช่น 200" min="0" required />
+            <span class="field-error" id="err-total_speed"></span>
+            <span class="hint">ความเร็วสูงสุด</span>
+          </div>
+
+          <div class="field">
+            <label for="zero_to_hundred">
+              0–100 km/h Time
+              <span class="unit">วินาที</span>
+              <span class="required-mark">*</span>
+            </label>
+            <input type="number" id="zero_to_hundred" name="zero_to_hundred"
+              placeholder="เช่น 3.2" min="0.1" step="0.01" required />
+            <span class="field-error" id="err-zero_to_hundred"></span>
+            <span class="hint">เวลาเร่ง 0–100 km/h (วิ)</span>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field">
+            <label for="cars_prices">
+              Price
+              <span class="unit">USD</span>
+              <span class="required-mark">*</span>
+            </label>
+            <input type="number" id="cars_prices" name="cars_prices"
+              placeholder="เช่น 90000" min="0" required />
+            <span class="field-error" id="err-cars_prices"></span>
+            <span class="hint">ราคาขายในตลาด (USD)</span>
+          </div>
+
+          <div class="field">
+            <label for="seats">
+              Seats
+              <span class="unit">ที่นั่ง</span>
+              <span class="required-mark">*</span>
+            </label>
+            <input type="number" id="seats" name="seats"
+              placeholder="เช่น 5" min="1" max="20" required />
+            <span class="field-error" id="err-seats"></span>
+            <span class="hint">จำนวนที่นั่ง</span>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field field--full">
+            <label for="torque">
+              Torque
+              <span class="unit">Nm</span>
+              <span class="required-mark">*</span>
+            </label>
+            <input type="number" id="torque" name="torque"
+              placeholder="เช่น 725" min="0" required />
+            <span class="field-error" id="err-torque"></span>
+            <span class="hint">แรงบิดรวมสูงสุด (Nm)</span>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" id="predict-btn" class="btn-primary" disabled>
+            <span class="btn-text">🔍 จำแนกประเภทรถ</span>
+            <span class="btn-loading" hidden>กำลังวิเคราะห์...</span>
+          </button>
+          <button type="button" id="reset-btn" class="btn-ghost">ล้างข้อมูล</button>
+        </div>
+
+      </form>
+
+      <!-- Quick-fill examples -->
+      <div class="examples-section">
+        <p class="examples-title">กรอกด้วยข้อมูลตัวอย่าง <span class="examples-note">(กด Submit เพื่อทำนาย)</span></p>
+        <div class="examples-grid">
+          <button class="example-chip" data-cluster="0"
+            data-values="3500,536,200,3.2,90000,2,725">
+            🏎️ สปอร์ต
+          </button>
+          <button class="example-chip" data-cluster="1"
+            data-values="1400,94,150,12.3,25000,5,180">
+            🚗 รถบ้าน
+          </button>
+          <button class="example-chip" data-cluster="2"
+            data-values="7500,1300,309,2.36,1600000,2,1680">
+            ⚡ Hypercar
+          </button>
+          <button class="example-chip" data-cluster="3"
+            data-values="200,1088,195,4.2,120000,5,14000">
+            💪 แรงบิดมหาศาล
+          </button>
+          <button class="example-chip" data-cluster="4"
+            data-values="5400,536,190,4.5,80000,6,686">
+            🚐 SUV/ตู้
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ===== RIGHT: RESULT PANEL ===== -->
+    <section class="card result-card" id="result-panel">
+
+      <!-- Empty state -->
+      <div class="result-empty" id="result-empty">
+        <div class="empty-illustration">🤖</div>
+        <h3>รอการวิเคราะห์</h3>
+        <p>กรอกข้อมูลสเปครถแล้วกด "จำแนกประเภทรถ"<br>เพื่อดูผลการทำนาย</p>
+      </div>
+
+      <!-- Result -->
+      <div class="result-content panel-hidden" id="result-content">
+        <div class="card-header">
+          <span class="section-label">PREDICTION RESULT</span>
+          <h2>ผลการจำแนกประเภท</h2>
+        </div>
+
+        <div class="cluster-badge" id="cluster-badge">
+          <span class="cluster-icon" id="cluster-icon"></span>
+          <div class="cluster-info">
+            <div class="cluster-number" id="cluster-number"></div>
+            <div class="cluster-name" id="cluster-name"></div>
+            <div class="cluster-name-en" id="cluster-name-en"></div>
+          </div>
+        </div>
+
+        <p class="cluster-description" id="cluster-description"></p>
+
+        <div class="stats-section">
+          <div class="stats-header">ค่าเฉลี่ยของกลุ่มนี้</div>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-label">Horsepower</div>
+              <div class="stat-value" id="stat-hp"></div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Torque</div>
+              <div class="stat-value" id="stat-torque"></div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Price</div>
+              <div class="stat-value" id="stat-price"></div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Top Speed</div>
+              <div class="stat-value" id="stat-speed"></div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Battery</div>
+              <div class="stat-value" id="stat-battery"></div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">จำนวนรุ่น</div>
+              <div class="stat-value" id="stat-count"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="input-summary" id="input-summary">
+          <div class="stats-header">ค่าที่ input</div>
+          <div class="stats-grid" id="input-stats-grid"></div>
+        </div>
+      </div>
+
+      <!-- Error state -->
+      <div class="result-error panel-hidden" id="result-error">
+        <div class="empty-illustration">⚠️</div>
+        <h3>เกิดข้อผิดพลาด</h3>
+        <p id="error-message"></p>
+      </div>
+
+    </section>
+
+  </div><!-- /.main-layout -->
+  </main>
+
+
+  <footer class="site-footer">
+    <p>CP363107 Data Science for Marketing · Car Clustering</p>
+  </footer>
+
+  <script src="/static/main.js"></script>
+</body>
+</html>
